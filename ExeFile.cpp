@@ -3,7 +3,7 @@
 #include "ExeFile.h"
 #include "Crashpad.h"
 #include "BlueInterface.h"
-#include <CCPLog.h>
+#include <CcpLog.h>
 
 #include <errno.h>
 #include <string>
