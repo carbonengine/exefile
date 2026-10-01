@@ -37,7 +37,7 @@ using std::exception;
 #include <CcpCore.h>
 
 // carbon-log
-#include <CCPLog.h>
+#include <CcpLog.h>
 
 // Python
 #include <Python.h>
