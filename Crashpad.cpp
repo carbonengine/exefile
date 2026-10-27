@@ -15,7 +15,7 @@
 
 auto executablePath = L"eve_crashmon.exe";
 
-#elif __APPLE__
+#elif __APPLE__ || __linux__
 
 auto executablePath = "eve_crashmon";
 
@@ -81,7 +81,7 @@ bool CrashpadCrashInterface::InitializeCrashpad()
 
 
 	
-#ifdef __APPLE__
+#if __APPLE__ || __linux__
 	std::string exePath = (const char*)CW2A( CcpExecutablePath().c_str() );
 	base::FilePath handler(exePath);
 	handler = handler.DirName().Append( executablePath );

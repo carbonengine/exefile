@@ -12,6 +12,15 @@ find_package(crashpad CONFIG REQUIRED)
 find_package(carbon-core CONFIG REQUIRED)
 find_package(Python3 COMPONENTS Development REQUIRED)
 
+set(PLATFORM_SOURCES)
+if(WIN32)
+    list(APPEND PLATFORM_SOURCES ExeFileWin32.cpp FileSystemWin32.cpp)
+elseif(APPLE)
+    list(APPEND PLATFORM_SOURCES ExeFileOsX.mm FileSystemOsX.mm)
+elseif(UNIX)
+    list(APPEND PLATFORM_SOURCES ExeFileLinux.cpp FileSystemLinux.cpp)
+endif()
+
 ccp_add_executable(Exefile
         autoversion.h
         BlueInterface.cpp
@@ -22,15 +31,13 @@ ccp_add_executable(Exefile
         Crashpad.h
         ExeFile.cpp
         ExeFile.h
-        ExeFileOsX.mm
-        ExeFileWin32.cpp
         FileSystem.h
-        FileSystemOsX.mm
-        FileSystemWin32.cpp
+        FileSystem.cpp
         resource.h
         StdAfx.cpp
         StdAfx.h
         version.h
+        ${PLATFORM_SOURCES}
         # Icon resource file on Windows, ignored on macOS
         ExeFile.rc
         )
@@ -78,12 +85,12 @@ set_target_properties(Exefile PROPERTIES CMAKE_ARCHIVE_OUTPUT_DIRECTORY  "exefil
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set (INSTALL_TO_MONOLITH OFF CACHE BOOL "Install this package to a perforce branch vendor folder - provided for backwards compatability")
 
+    find_program(CRASHPAD_HANDLER crashpad_handler REQUIRED)
+
     if (INSTALL_TO_MONOLITH)
         # Install rule to ensure that our runtime and linker files are in the expected, platform-specific folders
-        install(
-                IMPORTED_RUNTIME_ARTIFACTS crashpad::handler
-                DESTINATION bin/${CCP_PLATFORM}/${CCP_ARCHITECTURE}/${CCP_TOOLSET}/
-        )
+        install(PROGRAMS "${CRASHPAD_HANDLER}"
+            DESTINATION bin/${CCP_PLATFORM}/${CCP_ARCHITECTURE}/${CCP_TOOLSET}/)
         install(
                 TARGETS Exefile
                 EXPORT ExefileTargets
@@ -91,7 +98,8 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
                 RUNTIME DESTINATION bin/${CCP_PLATFORM}/${CCP_ARCHITECTURE}/${CCP_TOOLSET}/
         )
     else() # "VCPKG" INSTALL_MODE, but there's no need for another option, as this will be the default
-        install(IMPORTED_RUNTIME_ARTIFACTS crashpad::handler)
+        install(PROGRAMS "${CRASHPAD_HANDLER}"
+            DESTINATION bin/)
         install(
                 TARGETS Exefile
                 EXPORT ExefileTargets
