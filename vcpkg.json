@@ -2,7 +2,7 @@
   "dependencies": [
     {
       "name": "carbon-core",
-      "version>=": "3.3.0"
+      "version>=": "3.3.0#1"
     },
     {
       "name": "python3",
