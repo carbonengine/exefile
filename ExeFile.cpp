@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <wchar.h>
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -31,9 +32,6 @@ enum ExitCodes : int
 	FAILED_LOADING_BLUE_RELEASE_FLAVOUR = 5,
 	SEARCH_PATH_ARGUMENT_ERROR = 6,
 	PYTHON_INIT_ERROR = 7,
-	PYTHON_ARGS_ALLOCATION_ERROR = 8,
-	PYTHON_BACKUP_ARGS_ALLOCATION_ERROR = 9,
-	PYTHON_ARG_ALLOCATION_ERROR = 10,
 };
 
 //Use this to redirect standard error to a file.
@@ -253,7 +251,25 @@ bool BuildConcatenatedPathFromPathlist( const std::vector<std::wstring>& pathlis
 	return true;
 }
 
-bool ConfigurePython( BlueInterface& blue, bool interpreterMode )
+// Builds the interpreter's command line: argv[0] as this process received it, followed by every argument after /py,
+// or the whole command line when /py is absent. Each argument is narrowed with CW2A, as runPyMain() did before.
+std::vector<std::string> GetPythonArgv( const CommandLine& commandLine )
+{
+	auto marker = std::find( commandLine.begin(), commandLine.end(), L"/py" );
+	auto first = marker == commandLine.end() ? commandLine.begin() + 1 : marker + 1;
+
+	std::vector<std::string> pythonArgv{ std::string( CW2A( commandLine.front().c_str() ) ) };
+	for( auto it = first; it != commandLine.end(); ++it )
+	{
+		pythonArgv.push_back( std::string( CW2A( it->c_str() ) ) );
+	}
+	return pythonArgv;
+}
+
+// Configures and initializes Python. pythonArgv is the interpreter's command line when ExeFile is about to run as
+// the vanilla interpreter, and empty otherwise. Python must only be initialized once: initializing it again would
+// discard this configuration, and reset sys.prefix after site.py has pointed it at a venv.
+bool ConfigurePython( BlueInterface& blue, bool interpreterMode, const std::vector<std::string>& pythonArgv )
 {
 	// TODO this doesn't seem to work well when mixing Python C extensions
 	// that are built in debug vs. non-debug...
@@ -301,7 +317,21 @@ bool ConfigurePython( BlueInterface& blue, bool interpreterMode )
 	status = PyWideStringList_Append( &( config.warnoptions ), L"d" );
 	CCP_LOG( "Warn option reported exit code %d and message %s", status.exitcode, status.err_msg );
 	CCP_LOG( "Setting argv" );
-	status = PyConfig_SetArgv( &config, 0, nullptr );
+	if( pythonArgv.empty() )
+	{
+		status = PyConfig_SetArgv( &config, 0, nullptr );
+	}
+	else
+	{
+		// CPython parses the interpreter's command line when it reads the configuration, so -c, -m, -W, -O and the
+		// rest take effect in this initialization, and Py_RunMain() runs what they asked for.
+		std::vector<char*> argvPointers;
+		for( const auto& arg : pythonArgv )
+		{
+			argvPointers.push_back( const_cast<char*>( arg.c_str() ) ); // CPython copies, never writes through these
+		}
+		status = PyConfig_SetBytesArgv( &config, static_cast<Py_ssize_t>( argvPointers.size() ), argvPointers.data() );
+	}
 	CCP_LOG( "SetArgv reported exit code %d and message %s", status.exitcode, status.err_msg );
 
 	std::vector<std::wstring> pathlist;
@@ -359,6 +389,13 @@ bool ConfigurePython( BlueInterface& blue, bool interpreterMode )
 	CCP_LOG( "Initializing Python" );
 	status = Py_InitializeFromConfig( &config );
 
+	if( PyStatus_IsExit( status ) )
+	{
+		// CPython has handled -h, --version or an invalid option on the interpreter's command line. Exit with its
+		// exit code, as the vanilla interpreter does.
+		Py_ExitStatusException( status );
+	}
+
 	if( !Py_IsInitialized() )
 	{
 		//PyFlushError("Failed initializing Python");
@@ -371,8 +408,9 @@ bool ConfigurePython( BlueInterface& blue, bool interpreterMode )
 
 /*
 	This is so that we can have exefile behave as a standard python interpreter.
+	ConfigurePython() has already initialized Python from the interpreter's command line.
 */
-int runPyMain( std::vector<std::wstring> &argv, BlueInterface& blue )
+int runPyMain()
 {
 	if (auto crashReporter = GetCrashReporter(); crashReporter) {
 		// Signal to the crash reporting system that we're running in interpreter mode
@@ -382,101 +420,7 @@ int runPyMain( std::vector<std::wstring> &argv, BlueInterface& blue )
 		crashReporter->SetCrashKeyValue("sentry", R"({"tags": {"interpreter_mode": "true"}})");
 	}
 
-	// We want vanilla python behaviour.
-	// Every argument after /py gets forwarded to Py_Main
-	unsigned int nPythonArgs;
-	unsigned int vanillaIndex = 0;
-	char** pythonArguments;
-	// PyMain actually messes with the arguments
-	// so we need to backup the pointer to clean them up
-	char** backupPythonArguments;
-
-	// At what index is the vanilla marker
-	for( unsigned int i = 0; i < argv.size(); i++ )
-	{
-		const std::wstring &arg = argv[i];
-		if( arg == L"/py")
-		{
-			vanillaIndex = i;
-			break;
-		}
-	}
-
-	// Create the parameter list for the main python function
-	nPythonArgs = (unsigned int)argv.size() - vanillaIndex;
-
-	// Convert all the unicode strings to ascii
-	// We are going to be very careful about allocating memory and reporting
-	// anything that goes wrong.
-	pythonArguments = (char**)CCP_MALLOC("RunPyMain: Argument Array",  nPythonArgs*sizeof(char*) );
-	if( pythonArguments == NULL )
-	{
-		CCP_LOGERR( "runPyMain() -> Couldn't allocate memory for the python arguments" );
-		return PYTHON_ARGS_ALLOCATION_ERROR;
-	}
-
-	backupPythonArguments = (char**)CCP_MALLOC("RunPyMain: Argument Array",  nPythonArgs*sizeof(char*) );
-	if( backupPythonArguments == NULL )
-	{
-		CCP_LOGERR( "runPyMain() -> Couldn't allocate memory for the backup python arguments" );
-		return PYTHON_BACKUP_ARGS_ALLOCATION_ERROR;
-	}
-
-	unsigned int index = 0;
-	unsigned int counter = 0;
-	do
-	{
-		unsigned int slen = (unsigned int)argv[index].size() + 1; // Plus one for the null terminator
-		pythonArguments[counter] = (char*)CCP_MALLOC( "RunPyMain: Array Element",  slen*sizeof(char) );
-		if( pythonArguments[counter] == NULL )
-		{
-			CCP_LOGERR( "runPyMain() -> Couldn't allocate memory for one of the python parameters" );
-			return PYTHON_ARG_ALLOCATION_ERROR;
-		}
-		strncpy_s( pythonArguments[counter], slen, CW2A(argv[index].c_str()), _TRUNCATE );
-		++counter;
-		index = vanillaIndex + counter;
-	} while ( index < argv.size() );
-
-	// backup the pointers
-	for( unsigned int i = 0; i < nPythonArgs; i++ )
-	{
-		backupPythonArguments[i] = pythonArguments[i];
-	}
-
-	// Success,... now lets hope the arguments make sense
-	int result = Py_BytesMain( nPythonArgs, pythonArguments );
-
-	// Cleanup
-	for( unsigned int i = 0; i < nPythonArgs; i++ )
-	{
-		CCP_FREE( backupPythonArguments[i] );
-	}
-	CCP_FREE( pythonArguments );
-	CCP_FREE( backupPythonArguments );
-	return result;
-}
-void SetPythonStartupArgs( const std::vector<std::wstring>& args_in,  std::vector<std::wstring>& args_out)
-{
-	args_out = args_in;
-
-	for( size_t i = 1; i < args_out.size(); ++i )
-	{
-		std::wstring argName = args_out[i];
-		std::wstring argValue;
-
-		if( argName[0] == L'/' )
-		{
-			argName.erase( 0, 1 );
-		}
-
-		size_t assignPos = argName.find_first_of( L'=' );
-		if( assignPos != std::string::npos )
-		{
-			argValue = argName.substr( assignPos + 1 );
-			argName.erase( assignPos );
-		}
-	}
+	return Py_RunMain();
 }
 
 int Main(const CommandLine& commandLine, bool isSupportedOS)
@@ -624,18 +568,25 @@ int Main(const CommandLine& commandLine, bool isSupportedOS)
 		SetProcessAffinity( commandArguments.affinity );
 	}
 
-	if( !ConfigurePython( blue, interpreterMode ) )
+	// When we are going to run as the vanilla interpreter, Python is initialized with the interpreter's command line
+	// up front, and runPyMain() only runs what it asked for.
+	const bool runInterpreter = !blue.IsPackaged() && interpreterMode;
+	std::vector<std::string> pythonArgv;
+	if( runInterpreter )
+	{
+		pythonArgv = GetPythonArgv( commandLine );
+	}
+
+	if( !ConfigurePython( blue, interpreterMode, pythonArgv ) )
 	{
 		blue.ShowError();
 		return PYTHON_INIT_ERROR; // Python initialization error code
 	}
 
 	// Now enter python interpreter mode, if we are not packaged, and interpreter mode flag is set
-	if( !blue.IsPackaged() && interpreterMode )
+	if( runInterpreter )
 	{
-		std::vector<std::wstring> argv;
-		SetPythonStartupArgs(commandLine, argv);
-		int ret = runPyMain(argv, blue);
+		int ret = runPyMain();
 		// exit with the interpreter's failure exit code
 		blue.Terminate(ret);
 	}
