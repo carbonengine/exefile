@@ -280,6 +280,13 @@ bool ConfigurePython( BlueInterface& blue, bool interpreterMode, const std::vect
 	PyConfig config;
 	PyStatus status;
 
+	std::vector<char*> argvPointers;
+	for( const auto& arg : pythonArgv )
+	{
+		argvPointers.push_back( const_cast<char*>( arg.c_str() ) ); // CPython copies, never writes through these
+	}
+	const auto argc = static_cast<Py_ssize_t>( argvPointers.size() );
+
 	CCP_LOG( "Pre-initializing Python" );
 	if( !interpreterMode )
 	{
@@ -290,7 +297,15 @@ bool ConfigurePython( BlueInterface& blue, bool interpreterMode, const std::vect
 		PyPreConfig_InitPythonConfig( &preConfig );
 	}
 
-	status = Py_PreInitialize( &preConfig );
+	if( pythonArgv.empty() )
+	{
+		status = Py_PreInitialize( &preConfig );
+	}
+	else
+	{
+		// -E, -I, -X utf8 and -X dev are settled at pre-initialization.
+		status = Py_PreInitializeFromBytesArgs( &preConfig, argc, argvPointers.data() );
+	}
 	CCP_LOG( "Pre-init reported exit code %d and message %s", status.exitcode, status.err_msg );
 
 	CCP_LOG( "Configuring Python" );
@@ -325,12 +340,7 @@ bool ConfigurePython( BlueInterface& blue, bool interpreterMode, const std::vect
 	{
 		// CPython parses the interpreter's command line when it reads the configuration, so -c, -m, -W, -O and the
 		// rest take effect in this initialization, and Py_RunMain() runs what they asked for.
-		std::vector<char*> argvPointers;
-		for( const auto& arg : pythonArgv )
-		{
-			argvPointers.push_back( const_cast<char*>( arg.c_str() ) ); // CPython copies, never writes through these
-		}
-		status = PyConfig_SetBytesArgv( &config, static_cast<Py_ssize_t>( argvPointers.size() ), argvPointers.data() );
+		status = PyConfig_SetBytesArgv( &config, argc, argvPointers.data() );
 	}
 	CCP_LOG( "SetArgv reported exit code %d and message %s", status.exitcode, status.err_msg );
 
