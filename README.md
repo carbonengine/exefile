@@ -7,14 +7,14 @@ Building can be done using the usual CMake work flow.
 
 ## 🧪 Testing
 
-`tests/integration` holds integration tests for interpreter mode (`/py`). `BUILD_TESTING=ON` registers each of them
-with CTest as its own test, named like `InterpreterModeTests.test_detects_venv`.
+`tests/integration` holds integration tests for interpreter mode (`/py`). CMake registers each of them with CTest as
+its own test, named like `InterpreterModeTests.test_detects_venv`.
 
-ExeFile needs [Blue](https://github.com/carbonengine/blue) to run, so `BUILD_TESTING=ON` also builds Blue through
-vcpkg for the tests. On Windows:
+ExeFile needs [Blue](https://github.com/carbonengine/blue) to run, so the build also builds Blue through vcpkg for the
+tests. Configure with `-DBUILD_TESTING=OFF` to leave out both. On Windows:
 
 ```
-cmake --preset x64-windows-release -DBUILD_TESTING=ON
+cmake --preset x64-windows-release
 cmake --build .cmake-build-x64-windows-release --config Release
 ctest --test-dir .cmake-build-x64-windows-release -C Release --output-on-failure -j 8
 ```

@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # vcpkg installs the manifest's features when project() runs, so this has to come first.
-option(BUILD_TESTING "Build the integration tests, which builds Blue through vcpkg" OFF)
+option(BUILD_TESTING "Build the integration tests, which builds Blue through vcpkg" ON)
 if(BUILD_TESTING)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
