@@ -149,14 +149,14 @@ class NonAsciiTests(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_non_ascii_arguments(self):
-        arguments = ["Þórsmörk", "日本語"]
+        arguments = ["\u00de\u00f3rsm\u00f6rk", "\u65e5\u672c\u8a9e"]
         state = read_probe_output(run_exefile(PROBE_PY, *arguments))
         self.assertEqual(state["argv"][1:], arguments)
 
     @unittest.expectedFailure
     def test_non_ascii_script_path(self):
         with tempfile.TemporaryDirectory(prefix="exefile-test-") as root:
-            script = Path(root) / "Þór" / PROBE_PY.name
+            script = Path(root) / "\u00de\u00f3r" / PROBE_PY.name
             script.parent.mkdir()
             shutil.copy(PROBE_PY, script)
             state = read_probe_output(run_exefile(script))
