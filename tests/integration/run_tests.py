@@ -13,7 +13,6 @@ import json
 import os
 import shutil
 import subprocess
-import sysconfig
 import tempfile
 import unittest
 from pathlib import Path
@@ -122,17 +121,15 @@ class InterpreterModeTests(unittest.TestCase):
         exefile = get_exefile_path()
         with tempfile.TemporaryDirectory(prefix="exefile-test-venv-") as venv:
             venv = Path(venv)
-            scripts = Path(sysconfig.get_path("scripts", "venv", vars={"base": str(venv)}))
-            scripts.mkdir()
-            # The venv runs its own copy of ExeFile, which loads Blue and its shared libraries from its own folder.
-            for path in [exefile, *(p for p in exefile.parent.iterdir() if p.suffix in LIBRARY_SUFFIXES)]:
-                shutil.copy2(path, scripts)
-            site_packages = Path(sysconfig.get_path("purelib", "venv", vars={"base": str(venv)}))
-            site_packages.mkdir(parents=True)
+            self.assertEqual(run_exefile("-m", "venv", "--without-pip", venv).returncode, 0)
+            venv_exefile, = venv.glob(f"*/{exefile.name}")
+            site_packages, = venv.glob("**/site-packages")
+            # venv copies only the executable, but ExeFile loads Python and Blue from its own folder.
+            for library in (p for p in exefile.parent.iterdir() if p.suffix in LIBRARY_SUFFIXES):
+                shutil.copy2(library, venv_exefile.parent)
             installed_probe = site_packages / "installed_probe.py"
             shutil.copy(PROBE_PY, installed_probe)
-            (venv / "pyvenv.cfg").write_text(f"home = {exefile.parent}\n", encoding="utf-8")
-            state = read_probe_output(run_exefile("-m", installed_probe.stem, exe=scripts / exefile.name))
+            state = read_probe_output(run_exefile("-m", installed_probe.stem, exe=venv_exefile))
         self.assertEqual(Path(state["prefix"]), venv)
         self.assertNotEqual(Path(state["base_prefix"]), venv)
         self.assertEqual(Path(state["argv"][0]), installed_probe)
