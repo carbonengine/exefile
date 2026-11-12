@@ -5,6 +5,26 @@
 
 Building can be done using the usual CMake work flow.
 
+## 🧪 Testing
+
+`tests/integration` holds integration tests for interpreter mode (`/py`). CMake registers each of them with CTest as
+its own test, named like `InterpreterModeTests.test_detects_venv`.
+
+ExeFile needs [Blue](https://github.com/carbonengine/blue) to run, so the build also builds Blue through vcpkg for the
+tests. Configure with `-DBUILD_TESTING=OFF` to leave out both. On Windows:
+
+```
+cmake --preset x64-windows-release
+cmake --build .cmake-build-x64-windows-release --config Release
+ctest --test-dir .cmake-build-x64-windows-release -C Release --output-on-failure -j 8
+```
+
+Add `-R <regex>` to run only the tests whose names match.
+
+`run_tests.py` is a plain unittest module configured through the environment variables its docstring describes, which
+`ctest -V` prints. With them set, run single cases with the build's Python, for example
+`python tests/integration/run_tests.py InterpreterModeTests.test_detects_venv`.
+
 ## 🤝 Contributing
 Contribution follows the standard GIT PR model.
 
