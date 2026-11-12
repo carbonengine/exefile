@@ -12,5 +12,16 @@
       "name": "crashpad",
       "version>=": "2021-04-14#1"
     }
-  ]
+  ],
+  "features": {
+    "tests": {
+      "description": "Blue, for the interpreter-mode integration tests",
+      "dependencies": [
+        {
+          "name": "carbon-blue",
+          "version>=": "6.3.1"
+        }
+      ]
+    }
+  }
 }
