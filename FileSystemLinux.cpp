@@ -8,11 +8,11 @@
 
 std::string GetAppdataFolder()
 {
-	const char* xdg_data_home = std::getenv( "XDG_DATA_HOME" );
+	const char* xdgDataHome = std::getenv( "XDG_DATA_HOME" );
 
-	if( xdg_data_home )
+	if( xdgDataHome && (xdgDataHome[0] != '\0') )
 	{
-		return xdg_data_home;
+		return xdgDataHome;
 	}
 	// Fallback to ~/.local/share if XDG not found
 	const char* home = std::getenv( "HOME" );
