@@ -26,25 +26,25 @@ public:
 	bool ConstructPathListFromManifest( std::vector<std::wstring>& pathList, bool verifyManifest );
 	std::wstring ResolvePathForWritingW( const std::wstring& path );
 
-	using BlueSetCrashReporterRoutine = void( __cdecl* )( ICrashReporter* );
-	using BlueLogFuncChannelRoutine = void( __cdecl* )( CcpLogChannel_t&, CCP::LogType, unsigned long, const char*, va_list );
-	using BlueModuleStartupRoutine = void( __cdecl* )();
-	using BlueInitializeSocketLoggerRoutine = void( __cdecl* )();
-	using BlueInitializePathsRoutine = bool( __cdecl* )( const std::wstring& );
-	using BlueShutdownSocketLoggerRoutine = void( __cdecl* )();
-	using BlueInstallPythonMemoryHooksRoutine = void(__cdecl* )();
-	using BlueLoadPythonExtensionRoutine = PyObject*(__cdecl*) ( const char* );
-	using BlueShowInvalidOSVersionErrorRoutine = void( __cdecl* )();
-	using BlueShowErrorRoutine = void( __cdecl* )();
-	using BlueTerminateRoutine = void( __cdecl* )( int );
-	using BlueRunStacklessRoutine = bool( __cdecl* )();
-	using BlueIsPackagedRoutine = bool( __cdecl* )();
-	using BlueSetSearchPathsRoutine = bool( __cdecl* )( const std::vector<std::wstring>& );
-	using BlueSetStartupArgsRoutine = void( __cdecl* )( const std::vector<std::wstring>& );
-	using BlueHasStartupArgRoutine = bool( __cdecl* )( const std::wstring& name );
-	using BlueGetInitTabRoutine = void( __cdecl* )( std::vector<struct _inittab>& );
-	using BlueResolvePathForWritingWRoutine = void( __cdecl* )( const std::wstring&, std::wstring& );
-	using BlueConstructPathListFromManifestRoutine = bool( __cdecl* )( std::vector<std::wstring>&, bool );
+	using BlueSetCrashReporterRoutine = void( * )( ICrashReporter* );
+	using BlueLogFuncChannelRoutine = void( * )( CcpLogChannel_t&, CCP::LogType, unsigned long, const char*, va_list );
+	using BlueModuleStartupRoutine = void( * )();
+	using BlueInitializeSocketLoggerRoutine = void( * )();
+	using BlueInitializePathsRoutine = bool( * )( const std::wstring& );
+	using BlueShutdownSocketLoggerRoutine = void( * )();
+	using BlueInstallPythonMemoryHooksRoutine = void(* )();
+	using BlueLoadPythonExtensionRoutine = PyObject*(*) ( const char* );
+	using BlueShowInvalidOSVersionErrorRoutine = void( * )();
+	using BlueShowErrorRoutine = void( * )();
+	using BlueTerminateRoutine = void( * )( int );
+	using BlueRunStacklessRoutine = bool( * )();
+	using BlueIsPackagedRoutine = bool( * )();
+	using BlueSetSearchPathsRoutine = bool( * )( const std::vector<std::wstring>& );
+	using BlueSetStartupArgsRoutine = void( * )( const std::vector<std::wstring>& );
+	using BlueHasStartupArgRoutine = bool( * )( const std::wstring& name );
+	using BlueGetInitTabRoutine = void( * )( std::vector<struct _inittab>& );
+	using BlueResolvePathForWritingWRoutine = void( * )( const std::wstring&, std::wstring& );
+	using BlueConstructPathListFromManifestRoutine = bool( * )( std::vector<std::wstring>&, bool );
 
 private:
 	BlueSetCrashReporterRoutine m_blueSetCrashReporterRoutine = nullptr;
