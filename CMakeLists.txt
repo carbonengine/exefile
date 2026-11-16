@@ -1,6 +1,12 @@
 # Copyright © 2021 CCP ehf.
 cmake_minimum_required(VERSION 3.16)
 
+# vcpkg installs the manifest's features when project() runs, so this has to come first.
+option(BUILD_TESTING "Build the integration tests, which builds Blue through vcpkg" ON)
+if(BUILD_TESTING)
+    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
+endif()
+
 project(Exefile VERSION 1.0.0)
 
 include(cmake/CcpTargetConfigurations.cmake)
@@ -74,8 +80,13 @@ target_include_directories(Exefile
 set_target_properties(Exefile PROPERTIES OUTPUT_NAME "exefile")
 set_target_properties(Exefile PROPERTIES CMAKE_ARCHIVE_OUTPUT_DIRECTORY  "exefile")
 
-# Provide an install target iff this is the top level project only
+# Provide tests and an install target iff this is the top level project only
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    if(BUILD_TESTING)
+        enable_testing()
+        add_subdirectory(tests/integration)
+    endif()
+
     set (INSTALL_TO_MONOLITH OFF CACHE BOOL "Install this package to a perforce branch vendor folder - provided for backwards compatability")
 
     if (INSTALL_TO_MONOLITH)
