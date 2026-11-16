@@ -11,13 +11,6 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-# ExeFile loads Blue by file name, so Blue goes beside the executable, as it does when shipped.
-add_custom_target(ExefileTestBlue ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Blue> $<TARGET_FILE_DIR:Exefile>
-    VERBATIM
-)
-add_dependencies(ExefileTestBlue Exefile)
-
 execute_process(
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/discover.py
     OUTPUT_VARIABLE discovered
@@ -32,13 +25,21 @@ string(REGEX MATCHALL "[^\r\n]+" tests "${discovered}")
 # Without this, a case added to run_tests.py stays out of CTest until someone reconfigures by hand.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS discover.py run_tests.py)
 
+# Blue is built under a different name for each configuration (blue_debug, blue_internal, ...), and ExeFile picks the
+# name from /buildflavor. vcpkg keeps Blue in the folder that also holds ExeFile's shared libraries. It copies those
+# beside ExeFile only on Windows, and not for Debug, since every Carbon triplet installs release-type packages.
+set(environment
+    "EXEFILE=set:$<TARGET_FILE:Exefile>"
+    "EXEFILE_BUILD_FLAVOR=set:$<LOWER_CASE:$<CONFIG>>"
+    "EXEFILE_LIBRARY_DIR=set:$<TARGET_FILE_DIR:Blue>"
+    "EXEFILE_LIB=set:${Python3_STDLIB}"
+    "EXEFILE_LIB=path_list_append:${python_extensions}"
+)
+
 foreach(test IN LISTS tests)
     add_test(
         NAME ${test}
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.py ${test}
     )
-    set_tests_properties(${test} PROPERTIES
-        ENVIRONMENT_MODIFICATION
-            "EXEFILE=set:$<TARGET_FILE:Exefile>;EXEFILE_LIB=set:${Python3_STDLIB};EXEFILE_LIB=path_list_append:${python_extensions}"
-    )
+    set_tests_properties(${test} PROPERTIES ENVIRONMENT_MODIFICATION "${environment}")
 endforeach()

@@ -1,18 +1,22 @@
 # Copyright © 2026 CCP ehf.
 """Integration tests for ExeFile's interpreter mode.
 
-Every case runs `<EXEFILE> /lib=<EXEFILE_LIB> /py [options] <script> [args]` with EXEFILE_INHERIT=1.
+Every case runs `<EXEFILE> /lib=<EXEFILE_LIB> /buildflavor=<EXEFILE_BUILD_FLAVOR> /py [options] <script> [args]`
+with EXEFILE_INHERIT=1, and with the dynamic loader searching EXEFILE_LIBRARY_DIR.
 
-The tests read two environment variables, which tests/integration/CMakeLists.txt sets for CTest:
+The tests read these environment variables, which tests/integration/CMakeLists.txt sets for CTest:
 
-EXEFILE      the ExeFile executable, with Blue beside it
-EXEFILE_LIB  the /lib value: the standard library and the extension modules of the Python that ExeFile links
+EXEFILE               the ExeFile executable
+EXEFILE_BUILD_FLAVOR  the /buildflavor value, which picks the Blue that ExeFile loads
+EXEFILE_LIBRARY_DIR   the folder that holds Blue and ExeFile's shared libraries
+EXEFILE_LIB           the /lib value: the standard library and the extension modules of the Python that ExeFile links
 """
 import functools
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,8 +25,8 @@ HERE = Path(__file__).resolve().parent
 PROBE_PY = HERE / "probe.py"
 TRIGGER_BUFFER_OVERRUN_PY = HERE / "trigger_buffer_overrun.py"
 
-# File extensions of ExeFile's shared libraries and Blue.
-LIBRARY_SUFFIXES = {".dll", ".pyd", ".dylib", ".so"}
+# The variable that lists folders the dynamic loader searches for shared libraries, e.g. Blue.
+LIBRARY_PATH_VARIABLE = "PATH" if sys.platform == "win32" else "DYLD_LIBRARY_PATH"
 
 
 def get_required_variable(name: str) -> str:
@@ -42,29 +46,49 @@ def get_exefile_lib() -> str:
     return get_required_variable("EXEFILE_LIB")
 
 
+@functools.cache
+def get_exefile_build_flavor() -> str:
+    return get_required_variable("EXEFILE_BUILD_FLAVOR")
+
+
+@functools.cache
+def get_exefile_library_dir() -> str:
+    return get_required_variable("EXEFILE_LIBRARY_DIR")
+
+
 def run_exefile(
     *python_args: str | os.PathLike,
     env: dict[str, str] | None = None,
     exe: Path | None = None,
     cwd: Path | None = None,
-    timeout: float = 10,
+    timeout: float = 60,
 ) -> subprocess.CompletedProcess[str]:
     """Runs ExeFile in interpreter mode.
 
     Args:
         python_args: The arguments after /py.
-        env: The process's environment, besides EXEFILE_INHERIT. Nothing is inherited from this process.
+        env: The process's environment, besides EXEFILE_INHERIT and the loader's library path. Nothing is inherited
+            from this process.
         exe: The executable to run instead of EXEFILE.
         cwd: The working directory, by default this process's.
-        timeout: Seconds to wait before giving up, since a Blue error dialog blocks until someone closes it.
+        timeout: Seconds to wait before giving up, since a Blue error dialog blocks until someone closes it. Windows
+            sometimes takes 10 s to start an executable it has not run before, such as the copy a venv makes.
     """
     environment = {
         # Without it, ExeFile on Windows opens a console of its own instead of using the stdout and stderr it inherits.
         "EXEFILE_INHERIT": "1",
+        LIBRARY_PATH_VARIABLE: get_exefile_library_dir(),
         **(env or {}),
     }
+    command = [
+        str(exe or get_exefile_path()),
+        "/lib=" + get_exefile_lib(),
+        "/buildflavor=" + get_exefile_build_flavor(),
+        "/py",
+        *map(str, python_args),
+    ]
     result = subprocess.run(
-        [str(exe or get_exefile_path()), "/lib=" + get_exefile_lib(), "/py", *map(str, python_args)],
+        command,
         cwd=cwd,
         env=environment,
         capture_output=True,
@@ -124,9 +148,6 @@ class InterpreterModeTests(unittest.TestCase):
             self.assertEqual(run_exefile("-m", "venv", "--without-pip", venv).returncode, 0)
             venv_exefile, = venv.glob(f"*/{exefile.name}")
             site_packages, = venv.glob("**/site-packages")
-            # venv copies only the executable, but ExeFile loads Python and Blue from its own folder.
-            for library in (p for p in exefile.parent.iterdir() if p.suffix in LIBRARY_SUFFIXES):
-                shutil.copy2(library, venv_exefile.parent)
             installed_probe = site_packages / "installed_probe.py"
             shutil.copy(PROBE_PY, installed_probe)
             state = read_probe_output(run_exefile("-m", installed_probe.stem, exe=venv_exefile))
