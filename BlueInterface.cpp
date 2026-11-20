@@ -2,7 +2,7 @@
 #include "StdAfx.h"
 #include "BlueInterface.h"
 
-#if __has_include<unistd.>
+#if __has_include(<unistd.>)
     #include <unistd.h>
 #endif
 
