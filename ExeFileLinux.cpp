@@ -1,4 +1,3 @@
-#ifdef __linux__
 #include "ExeFile.h"
 
 bool IsSupportedOSVersion()
@@ -10,4 +9,4 @@ int main( int argc, char* argv[] )
 	CommandLine commandLine = ParseCommandLine( argc, argv );
 	return Main( commandLine, IsSupportedOSVersion() );
 }
-#endif
+

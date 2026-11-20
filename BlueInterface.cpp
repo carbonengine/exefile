@@ -2,7 +2,11 @@
 #include "StdAfx.h"
 #include "BlueInterface.h"
 
-#if __APPLE__ || __linux__
+#if __has_include<unistd.>
+    #include <unistd.h>
+#endif
+
+#if __APPLE__ || _POSIX_VERSION
 #include <dlfcn.h>
 #endif
 
@@ -50,7 +54,7 @@ bool BlueInterface::LoadBlue( const std::wstring& buildFlavor )
 		return false;
 	}
 
-#if __APPLE__ || __linux__
+#if __APPLE__ || _POSIX_VERSION
 #define LoadBlueRoutine( name )                                                                                                \
 	if( !( m_blue##name##Routine = reinterpret_cast<Blue##name##Routine>( dlsym( m_module, CCP_STRINGIZE( Blue##name ) ) ) ) ) \
 	{                                                                                                                          \
