@@ -15,7 +15,7 @@ BlueInterface::~BlueInterface()
 {
 	if( m_module )
 	{
-#if __APPLE__ || __linux__
+#if __APPLE__ || _POSIX_VERSION
 		dlclose( m_module );
 #elif _WIN32
 		FreeLibrary( static_cast<HMODULE>( m_module ) );
@@ -39,7 +39,7 @@ bool BlueInterface::LoadBlue( const std::wstring& buildFlavor )
 #if __APPLE__
 	std::string str = std::string( std::begin( name ), std::end( name ) ) + ".so";
 	m_module = dlopen( str.c_str(), RTLD_LAZY );
-#elif __linux__
+#elif _POSIX_VERSION
 	std::string str = "./" + std::string( std::begin( name ), std::end( name ) ) + ".so";
 	m_module = dlopen( str.c_str(), RTLD_LAZY );
 #elif _WIN32
