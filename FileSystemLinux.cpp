@@ -1,5 +1,3 @@
-#include "StdAfx.h"
-
 #if __linux__
 
 #include "FileSystem.h"

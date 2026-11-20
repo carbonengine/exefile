@@ -1,4 +1,3 @@
-#include "StdAfx.h"
 #ifdef __linux__
 #include "ExeFile.h"
 

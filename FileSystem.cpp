@@ -1,4 +1,3 @@
-#include "StdAfx.h"
 #if __APPLE__ || __linux__
 #include "FileSystem.h"
 
