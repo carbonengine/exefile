@@ -154,11 +154,10 @@ void CrashpadCrashInterface::ProduceImmediateDump()
 	if( m_client )
 	{
 #if _WIN32
-		LPCONTEXT lpContext{};
-		if( GetThreadContext( GetCurrentThread(), lpContext ) )
-		{
-			m_client->DumpWithoutCrash( *lpContext );
-		}
+		CONTEXT context{};
+		context.ContextFlags = CONTEXT_ALL;
+		RtlCaptureContext( &context );
+		m_client->DumpWithoutCrash( context );
 #endif
 	}
 }
