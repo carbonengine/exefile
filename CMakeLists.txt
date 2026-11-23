@@ -16,9 +16,9 @@ set(PLATFORM_SOURCES)
 if(WIN32)
     list(APPEND PLATFORM_SOURCES ExeFileWin32.cpp FileSystemWin32.cpp)
 elseif(APPLE)
-    list(APPEND PLATFORM_SOURCES ExeFileOsX.mm FileSystemOsX.mm)
+    list(APPEND PLATFORM_SOURCES ExeFileOsX.mm FileSystem.cpp FileSystemOsX.mm)
 elseif(UNIX)
-    list(APPEND PLATFORM_SOURCES ExeFileLinux.cpp FileSystemLinux.cpp)
+    list(APPEND PLATFORM_SOURCES ExeFileLinux.cpp FileSystem.cpp FileSystemLinux.cpp)
 endif()
 
 ccp_add_executable(Exefile
@@ -32,7 +32,6 @@ ccp_add_executable(Exefile
         ExeFile.cpp
         ExeFile.h
         FileSystem.h
-        FileSystem.cpp
         resource.h
         StdAfx.cpp
         StdAfx.h

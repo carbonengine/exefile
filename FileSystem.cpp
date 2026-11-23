@@ -1,4 +1,3 @@
-#if __APPLE__ || __linux__
 #include "FileSystem.h"
 
 #include <errno.h>
@@ -41,5 +40,3 @@ const std::wstring& GetLogsFolder()
 	}
 	return result;
 }
-
-#endif

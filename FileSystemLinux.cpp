@@ -1,5 +1,3 @@
-#if __linux__
-
 #include "FileSystem.h"
 
 #include <cstdlib>
@@ -20,5 +18,3 @@ std::string GetAppdataFolder()
 	}
 	return std::string( home ) + "/.local/share";
 }
-
-#endif
