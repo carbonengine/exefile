@@ -16,7 +16,7 @@ _STD_BEGIN
 
 _CRTIMP2 _Prhand _Raise_handler = 0;	// define raise handler pointer as null
 
-_CRTIMP2 void __cdecl _Throw(const exception& ex)
+_CRTIMP2 void _Throw(const exception& ex)
 	{	// report error and die
 		ASSERT(0);
 	}

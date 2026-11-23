@@ -71,7 +71,7 @@ void myInvalidParameterHandler(const wchar_t* expression,
 	CCP_LOGERR( "Expression: %s", expression?(const char*)CW2A(expression):"<none>");
 }
 
-void __cdecl PureCallHandler()
+void PureCallHandler()
 {
     CcpCrashOnPurpose();
 	// Crash the process instead of showing the default MS "pure virtual call" dialog

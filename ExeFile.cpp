@@ -362,7 +362,7 @@ bool ConfigurePython( BlueInterface& blue, bool interpreterMode, const std::vect
 
 #if _WIN32
 	for( std::wstring tmp; std::getline( pathHelper, tmp, L';' ); )
-#elif __APPLE__
+#elif __APPLE__ || __linux__
 	for( std::wstring tmp; std::getline( pathHelper, tmp, L':' ); )
 #else
 #error Unknown env var separator on this platform
@@ -432,6 +432,45 @@ int runPyMain()
 
 	return Py_RunMain();
 }
+
+#if (__APPLE__ || __linux__) && CCP_MEMORY_REPLACE_OPERATOR_NEW
+
+void* operator new( size_t size )
+{
+	extern const char* g_moduleName;
+	return CCP_MALLOC( g_moduleName, size );
+}
+void* operator new[]( size_t size )
+{
+	extern const char* g_moduleName;
+	return CCP_MALLOC( g_moduleName, size );
+}
+void operator delete( void *p ) noexcept
+{
+	CCP_FREE( p );
+}
+void operator delete[]( void *p ) noexcept
+{
+	CCP_FREE( p );
+}
+
+#endif
+
+#if __APPLE__ || __linux__
+
+void ShowConsoleWindow( ConsoleMode mode )
+{
+}
+
+void PreStartupTest()
+{
+}
+
+void SetProcessAffinity( int affinity )
+{
+}
+
+#endif
 
 int Main(const CommandLine& commandLine, bool isSupportedOS)
 {

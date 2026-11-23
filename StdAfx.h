@@ -28,6 +28,10 @@ using std::exception;
 #include <windows.h>
 #endif
 
+#if __has_include(<unistd.h>)
+#include <unistd.h>
+#endif
+
 // STL
 #include <map>
 #include <string>

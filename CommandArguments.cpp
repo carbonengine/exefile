@@ -252,7 +252,7 @@ CommandLine ParseCommandLine()
 	auto rawCommandLine = SplitCommandLine( GetCommandLineW() );
 	return ExpandCommandLineWithFiles( ExpandCommandLineWithEnvironment( rawCommandLine ) );
 }
-#elif __APPLE__
+#elif __APPLE__ || __linux__
 CommandLine ParseCommandLine( int argc, char* argv[] )
 {
 	CommandLine rawCommandLine;
@@ -284,7 +284,7 @@ void DumpCommandLineToDebugger( const CommandLine& commandLine )
 #if _WIN32
         OutputDebugStringW( it->c_str() );
         OutputDebugStringW( L"\n" );
-#elif __APPLE__
+#elif __APPLE__ || __linux__
         wprintf(L"%ls\n", it->c_str());
 #else
 #error "Unsupported platform!"
