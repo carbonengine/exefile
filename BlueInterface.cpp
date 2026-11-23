@@ -6,7 +6,7 @@
     #include <unistd.h>
 #endif
 
-#if __APPLE__ || _POSIX_VERSION
+#if _POSIX_VERSION
 #include <dlfcn.h>
 #endif
 
@@ -15,7 +15,7 @@ BlueInterface::~BlueInterface()
 {
 	if( m_module )
 	{
-#if __APPLE__ || _POSIX_VERSION
+#if _POSIX_VERSION
 		dlclose( m_module );
 #elif _WIN32
 		FreeLibrary( static_cast<HMODULE>( m_module ) );
@@ -36,7 +36,7 @@ bool BlueInterface::LoadBlue( const std::wstring& buildFlavor )
 
 	std::wstring name = L"blue" + ( buildFlavor.empty() ? L"" : L"_" + buildFlavor );
 
-#if __APPLE__ || _POSIX_VERSION
+#if _POSIX_VERSION
 	std::string str =        std::string( std::begin( name ), std::end( name ) ) + ".so";
 	m_module = dlopen( str.c_str(), RTLD_LAZY );
 #elif _WIN32
@@ -51,7 +51,7 @@ bool BlueInterface::LoadBlue( const std::wstring& buildFlavor )
 		return false;
 	}
 
-#if __APPLE__ || _POSIX_VERSION
+#if _POSIX_VERSION
 #define LoadBlueRoutine( name )                                                                                                \
 	if( !( m_blue##name##Routine = reinterpret_cast<Blue##name##Routine>( dlsym( m_module, CCP_STRINGIZE( Blue##name ) ) ) ) ) \
 	{                                                                                                                          \
