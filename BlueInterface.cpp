@@ -36,11 +36,8 @@ bool BlueInterface::LoadBlue( const std::wstring& buildFlavor )
 
 	std::wstring name = L"blue" + ( buildFlavor.empty() ? L"" : L"_" + buildFlavor );
 
-#if __APPLE__
-	std::string str = std::string( std::begin( name ), std::end( name ) ) + ".so";
-	m_module = dlopen( str.c_str(), RTLD_LAZY );
-#elif _POSIX_VERSION
-	std::string str = "./" + std::string( std::begin( name ), std::end( name ) ) + ".so";
+#if __APPLE__ || _POSIX_VERSION
+	std::string str =        std::string( std::begin( name ), std::end( name ) ) + ".so";
 	m_module = dlopen( str.c_str(), RTLD_LAZY );
 #elif _WIN32
 	name += L".pyd";
